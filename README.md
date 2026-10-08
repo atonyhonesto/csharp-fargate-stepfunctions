@@ -27,7 +27,7 @@ flowchart TB
     V -- yes --> F["FirstAttempt<br/>attempt = 1"] --> R["RunReport<br/>ecs:runTask.sync<br/>env: RACE_ID, ATTEMPT"]
     R -- "exit 0" --> D(["✅ Done"])
     R -- "Retry: ECS / timeout errors" --> R
-    R -- "Catch: States.TaskFailed" --> X["ReadExitCode<br/>States.StringToJson(Cause)"] --> T{"IsTransient<br/>exit 75 and attempt < 3?"}
+    R -- "Catch: States.TaskFailed" --> X["ReadExitCode<br/>States.StringToJson(Cause)"] --> T{"IsTransient<br/>exit 75 and attempt below 3?"}
     T -- yes --> W["Backoff<br/>Wait 60 s"] --> N["NextAttempt<br/>States.MathAdd(attempt, 1)"] --> R
     T -- no --> RF["❌ ReportFailed"]
 ```
