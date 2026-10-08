@@ -106,7 +106,9 @@ public sealed partial class AslInterpreter(JsonObject definition, Func<JsonNode,
         if (!m.Success) return Select(data, expr)?.DeepClone();
         var args = new List<JsonNode?>();
         foreach (var raw in SplitArgs(m.Groups[2].Value))
-            args.Add(raw.StartsWith('\'') ? JsonValue.Create(raw.Trim('\'')) : Select(data, raw));
+            args.Add(raw.StartsWith('\'') ? JsonValue.Create(raw.Trim('\''))               // 'string literal'
+                   : int.TryParse(raw, CultureInfo.InvariantCulture, out var n) ? JsonValue.Create(n) // number literal
+                   : Select(data, raw));                                                          // $.path
 
         switch (m.Groups[1].Value)
         {
