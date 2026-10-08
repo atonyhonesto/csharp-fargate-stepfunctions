@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LapReport\LapReport.csproj" />
+    <None Include="..\..\infra\state-machine.asl.json" Link="state-machine.asl.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

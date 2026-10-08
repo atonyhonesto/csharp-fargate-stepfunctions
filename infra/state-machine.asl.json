@@ -1,0 +1,74 @@
+{
+  "Comment": "Run the lap-report container on Fargate once per race. Exit code 75 means try again later; anything else non-zero stops the execution.",
+  "StartAt": "Validate",
+  "States": {
+    "Validate": {
+      "Type": "Choice",
+      "Choices": [{ "Variable": "$.raceId", "IsPresent": true, "Next": "FirstAttempt" }],
+      "Default": "BadInput"
+    },
+    "FirstAttempt": {
+      "Type": "Pass",
+      "Parameters": { "raceId.$": "$.raceId", "attempt": 1 },
+      "Next": "RunReport"
+    },
+    "RunReport": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::ecs:runTask.sync",
+      "Parameters": {
+        "Cluster": "${ClusterArn}",
+        "TaskDefinition": "${TaskDefinitionArn}",
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": { "Subnets": ["${SubnetId}"], "SecurityGroups": ["${SecurityGroupId}"], "AssignPublicIp": "DISABLED" }
+        },
+        "Overrides": {
+          "ContainerOverrides": [{
+            "Name": "lap-report",
+            "Environment": [
+              { "Name": "RACE_ID", "Value.$": "$.raceId" },
+              { "Name": "ATTEMPT", "Value.$": "States.Format('{}', $.attempt)" }
+            ]
+          }]
+        }
+      },
+      "ResultPath": "$.task",
+      "Retry": [
+        {
+          "Comment": "Infrastructure problems (capacity, API throttling) are always worth retrying",
+          "ErrorEquals": ["ECS.AmazonECSException", "States.Timeout"],
+          "IntervalSeconds": 10, "MaxAttempts": 3, "BackoffRate": 2
+        }
+      ],
+      "Catch": [{ "ErrorEquals": ["States.TaskFailed"], "ResultPath": "$.error", "Next": "ReadExitCode" }],
+      "Next": "Done"
+    },
+    "ReadExitCode": {
+      "Type": "Pass",
+      "Comment": "The ECS task description arrives as a JSON string in Cause",
+      "Parameters": { "task.$": "States.StringToJson($.error.Cause)" },
+      "ResultPath": "$.failed",
+      "Next": "IsTransient"
+    },
+    "IsTransient": {
+      "Type": "Choice",
+      "Choices": [{
+        "And": [
+          { "Variable": "$.failed.task.Containers[0].ExitCode", "NumericEquals": 75 },
+          { "Variable": "$.attempt", "NumericLessThan": 3 }
+        ],
+        "Next": "Backoff"
+      }],
+      "Default": "ReportFailed"
+    },
+    "Backoff": { "Type": "Wait", "Seconds": 60, "Next": "NextAttempt" },
+    "NextAttempt": {
+      "Type": "Pass",
+      "Parameters": { "raceId.$": "$.raceId", "attempt.$": "States.MathAdd($.attempt, 1)" },
+      "Next": "RunReport"
+    },
+    "ReportFailed": { "Type": "Fail", "Error": "LapReportFailed", "Cause": "The container exited with a non-retryable code, or ran out of attempts" },
+    "BadInput": { "Type": "Fail", "Error": "BadInput", "Cause": "raceId is required" },
+    "Done": { "Type": "Succeed" }
+  }
+}

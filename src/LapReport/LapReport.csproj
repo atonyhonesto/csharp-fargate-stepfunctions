@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- small container image: no ICU needed, framework-dependent publish onto the runtime image -->
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="data\**" CopyToOutputDirectory="PreserveNewest" />
+    <InternalsVisibleTo Include="LapReport.Tests" />
+  </ItemGroup>
+</Project>

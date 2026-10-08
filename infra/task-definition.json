@@ -1,0 +1,29 @@
+{
+  "family": "lap-report",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "memory": "512",
+  "runtimePlatform": { "operatingSystemFamily": "LINUX", "cpuArchitecture": "ARM64" },
+  "executionRoleArn": "${ExecutionRoleArn}",
+  "taskRoleArn": "${TaskRoleArn}",
+  "containerDefinitions": [
+    {
+      "name": "lap-report",
+      "image": "${EcrRepositoryUri}:latest",
+      "essential": true,
+      "stopTimeout": 30,
+      "readonlyRootFilesystem": true,
+      "environment": [
+        { "name": "DATA_DIR", "value": "/app/data" },
+        { "name": "OUTPUT_DIR", "value": "/tmp/lap-report" }
+      ],
+      "mountPoints": [{ "sourceVolume": "scratch", "containerPath": "/tmp" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": { "awslogs-group": "/ecs/lap-report", "awslogs-region": "${Region}", "awslogs-stream-prefix": "job" }
+      }
+    }
+  ],
+  "volumes": [{ "name": "scratch" }]
+}

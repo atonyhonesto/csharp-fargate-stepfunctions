@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build
+        run: dotnet build FargateStepFunctions.slnx -c Release -nologo -v q
+      - name: Test
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet test FargateStepFunctions.slnx -c Release --no-build -nologo --logger "console;verbosity=normal" 2>&1 | tee test-output.txt
+      - name: Walk the state machine
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project src/Simulator -c Release --no-build | tee simulator-output.txt
+      - name: Container behaviour
+        shell: bash
+        run: ./container-check.sh | tee container-output.txt
+      - name: Publish outputs
+        if: always()
+        shell: bash
+        run: |
+          for f in simulator-output container-output; do
+            [ -f "$f.txt" ] || continue
+            body=$(sed 's/%/%25/g' "$f.txt" | awk '{printf "%s%%0A", $0}')
+            echo "::notice title=$f::$body"
+          done
+      - name: Publish test output on failure
+        if: failure()
+        shell: bash
+        run: |
+          [ -f test-output.txt ] || exit 0
+          body=$(grep -v '^\s*$' test-output.txt | tail -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::error title=test output::$body"

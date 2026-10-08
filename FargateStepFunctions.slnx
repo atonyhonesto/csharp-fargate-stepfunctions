@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/LapReport/LapReport.csproj" />
+  <Project Path="src/Simulator/Simulator.csproj" />
+  <Project Path="tests/LapReport.Tests/LapReport.Tests.csproj" />
+</Solution>
