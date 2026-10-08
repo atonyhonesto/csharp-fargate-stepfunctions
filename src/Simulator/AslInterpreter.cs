@@ -149,10 +149,16 @@ public sealed partial class AslInterpreter(JsonObject definition, Func<JsonNode,
         if (rule["And"] is JsonArray all) return all.All(r => Test(r!, data));
         var v = Select(data, (string)rule["Variable"]!);
         if (rule["IsPresent"] is { } present) return (v is not null) == (bool)present;
-        if (rule["NumericEquals"] is { } eq) return v is JsonValue n && n.TryGetValue<double>(out var x) && x == (double)eq;
-        if (rule["NumericLessThan"] is { } lt) return v is JsonValue n2 && n2.TryGetValue<double>(out var y) && y < (double)lt;
+        if (rule["NumericEquals"] is { } eq) return Number(v) is { } x && x == Number(eq);
+        if (rule["NumericLessThan"] is { } lt) return Number(v) is { } y && y < Number(lt);
         throw new NotSupportedException(rule.ToJsonString());
     }
+
+    /// <summary>A JSON number as double, whatever CLR type backs the node (int from MathAdd, JsonElement from parsing).</summary>
+    private static double? Number(JsonNode? node) =>
+        node is JsonValue v && v.GetValueKind() == System.Text.Json.JsonValueKind.Number
+            ? double.Parse(v.ToJsonString(), CultureInfo.InvariantCulture)
+            : null;
 
     [GeneratedRegex(@"^States\.(\w+)\((.*)\)$")]
     private static partial Regex Intrinsic();
